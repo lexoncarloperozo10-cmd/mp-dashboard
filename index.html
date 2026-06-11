@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Dinero</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+body{background:#f0f4f8;min-height:100vh}
+
+/* AUTH */
+#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f0f4f8}
+.auth-card{background:#fff;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:360px;box-shadow:0 4px 24px rgba(0,0,0,0.08);text-align:center}
+.auth-logo{width:52px;height:52px;background:#009ee3;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem}
+.auth-logo svg{width:26px;height:26px;fill:#fff}
+.auth-card h1{font-size:20px;font-weight:600;color:#111;margin-bottom:6px}
+.auth-card p{font-size:13px;color:#888;margin-bottom:1.75rem;line-height:1.5}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px;border:1px solid #ddd;border-radius:10px;background:#fff;font-size:14px;font-weight:500;color:#333;cursor:pointer;transition:background 0.15s}
+.btn-google:hover{background:#f5f5f5}
+.btn-google img{width:20px;height:20px}
+.auth-error{margin-top:14px;font-size:12px;color:#e53935;display:none}
+
+/* APP */
+#app-screen{display:none}
+.topbar{background:#009ee3;padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-dot{width:10px;height:10px;border-radius:50%;background:#fff;opacity:0.9}
+.topbar-title{font-size:15px;font-weight:600;color:#fff}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.topbar-user{font-size:12px;color:rgba(255,255,255,0.85)}
+.btn-logout{background:rgba(255,255,255,0.15);border:none;border-radius:8px;padding:5px 12px;font-size:12px;color:#fff;cursor:pointer}
+.btn-logout:hover{background:rgba(255,255,255,0.25)}
+
+.container{max-width:680px;margin:0 auto;padding:1.25rem 1rem 3rem}
+
+.balance-card{background:#009ee3;border-radius:16px;padding:1.5rem;margin-bottom:1rem;position:relative;overflow:hidden}
+.balance-card::after{content:'';position:absolute;right:-40px;top:-40px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,0.07)}
+.balance-label{font-size:12px;color:rgba(255,255,255,0.8);margin-bottom:4px}
+.balance-amount{font-size:32px;font-weight:700;color:#fff;letter-spacing:-1px}
+.balance-sub{font-size:11px;color:rgba(255,255,255,0.65);margin-top:3px}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
+.stat-card{background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #eee}
+.stat-label{font-size:11px;color:#999;margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.stat-val{font-size:20px;font-weight:600}
+.stat-val.green{color:#00a650}
+.stat-val.red{color:#f23d4f}
+
+.actions{display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap}
+.btn-add{background:#009ee3;color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px}
+.btn-add:hover{background:#0085c7}
+.btn-filter{background:#fff;border:1px solid #ddd;border-radius:20px;padding:7px 14px;font-size:12px;color:#555;cursor:pointer;transition:all 0.15s}
+.btn-filter.active{border-color:#009ee3;color:#009ee3;background:#e8f6fd}
+
+.section-title{font-size:11px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px}
+.movements-list{background:#fff;border-radius:14px;border:1px solid #eee;overflow:hidden}
+.mov-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #f5f5f5;transition:background 0.1s}
+.mov-item:last-child{border-bottom:none}
+.mov-item:hover{background:#fafafa}
+.mov-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px}
+.icon-ingreso{background:#e8f8ee;color:#00a650}
+.icon-egreso{background:#fff0f1;color:#f23d4f}
+.icon-transferencia{background:#e8f1fb;color:#009ee3}
+.icon-otro{background:#f5f5f5;color:#888}
+.mov-info{flex:1;min-width:0}
+.mov-desc{font-size:13px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mov-meta{font-size:11px;color:#aaa;margin-top:2px}
+.mov-chip{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;margin-left:4px}
+.chip-ingreso{background:#e8f8ee;color:#00a650}
+.chip-egreso{background:#fff0f1;color:#f23d4f}
+.chip-transferencia{background:#e8f1fb;color:#009ee3}
+.chip-otro{background:#f5f5f5;color:#888}
+.mov-right{text-align:right;flex-shrink:0}
+.mov-amount{font-size:14px;font-weight:700}
+.mov-amount.green{color:#00a650}
+.mov-amount.red{color:#f23d4f}
+.mov-date{font-size:11px;color:#bbb;margin-top:2px}
+.mov-del{background:none;border:none;cursor:pointer;color:#ccc;padding:5px;border-radius:6px;font-size:16px;opacity:0;transition:opacity 0.15s;margin-left:4px}
+.mov-item:hover .mov-del{opacity:1}
+.mov-del:hover{color:#f23d4f;background:#fff0f1}
+.empty-state{text-align:center;padding:3rem 1rem;color:#bbb;font-size:13px}
+.empty-icon{font-size:32px;display:block;margin-bottom:10px;opacity:0.4}
+
+/* MODAL OPERACION */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;align-items:center;justify-content:center;padding:1rem}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:1.5rem;width:100%;max-width:400px;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:16px;font-weight:700;margin-bottom:1.25rem;color:#111}
+.form-group{margin-bottom:14px}
+.form-group label{font-size:12px;color:#666;display:block;margin-bottom:5px;font-weight:500}
+.form-group select,.form-group input,.form-group textarea{width:100%;font-size:13px;border-radius:8px;border:1px solid #ddd;background:#fafafa;color:#111;padding:9px 11px;outline:none;transition:border 0.15s}
+.form-group select:focus,.form-group input:focus,.form-group textarea:focus{border-color:#009ee3;background:#fff}
+.form-group textarea{resize:none;height:64px}
+.modal-btns{display:flex;gap:8px;margin-top:1.25rem}
+.modal-btns button{flex:1;padding:10px;border-radius:10px;font-size:13px;cursor:pointer;font-weight:600}
+.btn-cancel{background:#fff;border:1px solid #ddd;color:#666}
+.btn-save{background:#009ee3;border:none;color:#fff}
+.btn-save:hover{background:#0085c7}
+.btn-save:disabled{background:#b0d9f0;cursor:not-allowed}
+
+/* MODAL PIN */
+.pin-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center}
+.pin-bg.open{display:flex}
+.pin-modal{background:#fff;border-radius:16px;padding:1.75rem 1.5rem;width:100%;max-width:300px;text-align:center}
+.pin-modal h3{font-size:15px;font-weight:700;margin-bottom:6px}
+.pin-modal p{font-size:12px;color:#aaa;margin-bottom:16px}
+.pin-inputs{display:flex;gap:10px;justify-content:center;margin-bottom:12px}
+.pin-inputs input{width:48px;height:54px;text-align:center;font-size:22px;font-weight:700;border-radius:10px;border:1.5px solid #ddd;background:#fafafa;color:#111;outline:none}
+.pin-inputs input:focus{border-color:#009ee3}
+.pin-err{font-size:12px;color:#f23d4f;min-height:16px;margin-bottom:10px}
+.btn-pin-cancel{width:100%;padding:9px;border-radius:10px;font-size:13px;cursor:pointer;background:#fff;border:1px solid #ddd;color:#666;font-weight:500}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;padding:2.5rem;color:#bbb;font-size:13px;gap:8px}
+.spinner{width:18px;height:18px;border:2px solid #ddd;border-top-color:#009ee3;border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* READONLY BADGE */
+.readonly-badge{background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.3);border-radius:20px;padding:3px 10px;font-size:11px;color:#fff}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+    </div>
+    <h1>Mi Dinero</h1>
+    <p>Accedé con tu cuenta de Google para ver el panel financiero</p>
+    <button class="btn-google" onclick="loginGoogle()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Continuar con Google
+    </button>
+    <div class="auth-error" id="auth-error">No tenés acceso autorizado a este panel.</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-dot"></div>
+      <span class="topbar-title">Mi Dinero</span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-user" id="user-email-display"></span>
+      <span class="readonly-badge" id="readonly-badge" style="display:none">Solo lectura</span>
+      <button class="btn-logout" onclick="logout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="balance-card">
+      <div class="balance-label">Dinero disponible</div>
+      <div class="balance-amount" id="balance-display">$0</div>
+      <div class="balance-sub" id="balance-sub">Cargando...</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-label">↓ Ingresos</div>
+        <div class="stat-val green" id="total-in">$0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">↑ Egresos</div>
+        <div class="stat-val red" id="total-out">$0</div>
+      </div>
+    </div>
+
+    <div class="actions" id="actions-bar">
+      <button class="btn-add" id="btn-add-op" onclick="openModal()">+ Cargar operación</button>
+      <button class="btn-filter active" onclick="setFilter('all',this)">Todo</button>
+      <button class="btn-filter" onclick="setFilter('ingreso',this)">Ingresos</button>
+      <button class="btn-filter" onclick="setFilter('egreso',this)">Egresos</button>
+      <button class="btn-filter" onclick="setFilter('transferencia',this)">Transferencias</button>
+    </div>
+
+    <div class="section-title">Actividad reciente</div>
+    <div class="movements-list" id="movements-list">
+      <div class="loading"><div class="spinner"></div> Cargando movimientos...</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL OPERACION -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h3>Nueva operación</h3>
+    <div class="form-group">
+      <label>Tipo</label>
+      <select id="op-tipo">
+        <option value="ingreso">Ingreso — cobro / venta</option>
+        <option value="egreso">Egreso — pago / gasto</option>
+        <option value="transferencia">Transferencia enviada</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Monto ($)</label>
+      <input type="number" id="op-monto" placeholder="0.00" min="0" step="0.01">
+    </div>
+    <div class="form-group">
+      <label>Descripción</label>
+      <input type="text" id="op-desc" placeholder="Ej: Venta producto X, Pago proveedor...">
+    </div>
+    <div class="form-group">
+      <label>Nombre / Persona</label>
+      <input type="text" id="op-nombre" placeholder="Ej: Juan García">
+    </div>
+    <div class="form-group">
+      <label>Fecha</label>
+      <input type="date" id="op-fecha">
+    </div>
+    <div class="form-group">
+      <label>Nota (opcional)</label>
+      <textarea id="op-nota" placeholder="Info adicional..."></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" id="btn-save" onclick="saveOp()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PIN -->
+<div class="pin-bg" id="pin-bg">
+  <div class="pin-modal">
+    <h3>Eliminar operación</h3>
+    <p>Ingresá el PIN de administrador</p>
+    <div class="pin-inputs">
+      <input type="password" maxlength="1" id="p1" oninput="nextPin(this,'p2')">
+      <input type="password" maxlength="1" id="p2" oninput="nextPin(this,'p3')">
+      <input type="password" maxlength="1" id="p3" oninput="nextPin(this,'p4')">
+      <input type="password" maxlength="1" id="p4" oninput="checkPin()">
+    </div>
+    <div class="pin-err" id="pin-err"></div>
+    <button class="btn-pin-cancel" onclick="closePinModal()">Cancelar</button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://hdtvqhjvxjptcemeryab.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_4whXIoK2pF8QT6vAtHxDTA_Mo1fazku';
+const ADMIN_EMAIL = 'Lexoncarloperozo10@gmail.com';
+const ADMIN_PIN   = '1496';
+const ALLOWED_EMAILS = ['lexoncarloperozo10@gmail.com', 'alexfiveecomscaling@gmail.com'];
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let isAdmin = false;
+let allMovements = [];
+let currentFilter = 'all';
+let pendingDeleteId = null;
+
+// ── AUTH ──────────────────────────────────────────────
+async function loginGoogle() {
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin }
+  });
+  if (error) console.error(error);
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  location.reload();
+}
+
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (!session) { showAuth(); return; }
+  const email = session.user.email.toLowerCase();
+  if (!ALLOWED_EMAILS.includes(email)) {
+    await sb.auth.signOut();
+    document.getElementById('auth-error').style.display = 'block';
+    showAuth();
+    return;
+  }
+  currentUser = session.user;
+  isAdmin = email === ADMIN_EMAIL.toLowerCase();
+  showApp();
+  await loadMovements();
+});
+
+function showAuth() {
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app-screen').style.display = 'none';
+}
+function showApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  document.getElementById('user-email-display').textContent = currentUser.email;
+  if (!isAdmin) {
+    document.getElementById('btn-add-op').style.display = 'none';
+    document.getElementById('readonly-badge').style.display = 'inline-block';
+  }
+}
+
+// ── DATA ──────────────────────────────────────────────
+async function loadMovements() {
+  const list = document.getElementById('movements-list');
+  list.innerHTML = '<div class="loading"><div class="spinner"></div> Cargando movimientos...</div>';
+  const { data, error } = await sb.from('movements').select('*').order('fecha', { ascending: false });
+  if (error) { list.innerHTML = '<div class="empty-state">Error cargando datos.</div>'; return; }
+  allMovements = data || [];
+  render();
+}
+
+async function saveOp() {
+  const tipo   = document.getElementById('op-tipo').value;
+  const monto  = parseFloat(document.getElementById('op-monto').value);
+  const desc   = document.getElementById('op-desc').value.trim();
+  const nombre = document.getElementById('op-nombre').value.trim();
+  const fecha  = document.getElementById('op-fecha').value;
+  const nota   = document.getElementById('op-nota').value.trim();
+  if (!monto || monto <= 0) { alert('Ingresá un monto válido'); return; }
+  if (!desc)  { alert('Ingresá una descripción'); return; }
+  if (!fecha) { alert('Seleccioná una fecha'); return; }
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  const { data, error } = await sb.from('movements').insert([{
+    user_email: currentUser.email, tipo, monto, descripcion: desc, nombre, fecha, nota
+  }]).select();
+  btn.disabled = false; btn.textContent = 'Guardar';
+  if (error) { alert('Error al guardar: ' + error.message); return; }
+  allMovements.unshift(data[0]);
+  render();
+  closeModal();
+  resetForm();
+}
+
+async function deleteOp(id) {
+  const { error } = await sb.from('movements').delete().eq('id', id);
+  if (error) { alert('Error al eliminar'); return; }
+  allMovements = allMovements.filter(m => m.id !== id);
+  render();
+}
+
+// ── RENDER ────────────────────────────────────────────
+function fmt(n) {
+  return '$' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+function render() {
+  const filtered = currentFilter === 'all' ? allMovements : allMovements.filter(m => m.tipo === currentFilter);
+  let totalIn = 0, totalOut = 0;
+  allMovements.forEach(m => {
+    if (m.tipo === 'ingreso') totalIn += Number(m.monto);
+    else if (m.tipo === 'egreso' || m.tipo === 'transferencia') totalOut += Number(m.monto);
+  });
+  const balance = totalIn - totalOut;
+  document.getElementById('balance-display').textContent = fmt(balance);
+  document.getElementById('balance-sub').textContent = allMovements.length + ' movimiento' + (allMovements.length !== 1 ? 's' : '') + ' registrado' + (allMovements.length !== 1 ? 's' : '');
+  document.getElementById('total-in').textContent  = fmt(totalIn);
+  document.getElementById('total-out').textContent = fmt(totalOut);
+
+  const list = document.getElementById('movements-list');
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state"><span class="empty-icon">🧾</span>${currentFilter === 'all' ? 'Sin movimientos aún.<br>Cargá tu primera operación.' : 'Sin movimientos en esta categoría.'}</div>`;
+    return;
+  }
+  const icons = { ingreso:'↓', egreso:'↑', transferencia:'⇄', otro:'·' };
+  list.innerHTML = filtered.map(m => {
+    const isIn = m.tipo === 'ingreso';
+    const fecha = m.fecha ? new Date(m.fecha + 'T12:00:00').toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' }) : '';
+    const delBtn = isAdmin ? `<button class="mov-del" onclick="askDelete('${m.id}')" title="Eliminar">🗑</button>` : '';
+    return `<div class="mov-item">
+      <div class="mov-icon icon-${m.tipo}">${icons[m.tipo] || '·'}</div>
+      <div class="mov-info">
+        <div class="mov-desc">${m.descripcion}</div>
+        <div class="mov-meta">${m.nombre || ''}${m.nota ? ' · ' + m.nota : ''}<span class="mov-chip chip-${m.tipo}">${m.tipo}</span></div>
+      </div>
+      <div class="mov-right">
+        <div class="mov-amount ${isIn ? 'green' : 'red'}">${isIn ? '+' : '-'} ${fmt(m.monto)}</div>
+        <div class="mov-date">${fecha}</div>
+      </div>
+      ${delBtn}
+    </div>`;
+  }).join('');
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+// ── MODAL ─────────────────────────────────────────────
+function openModal() {
+  document.getElementById('op-fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('modal-bg').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
+function resetForm() {
+  ['op-monto','op-desc','op-nombre','op-nota'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ── PIN ───────────────────────────────────────────────
+function askDelete(id) {
+  pendingDeleteId = id;
+  ['p1','p2','p3','p4'].forEach(p => document.getElementById(p).value = '');
+  document.getElementById('pin-err').textContent = '';
+  document.getElementById('pin-bg').classList.add('open');
+  setTimeout(() => document.getElementById('p1').focus(), 100);
+}
+function closePinModal() {
+  pendingDeleteId = null;
+  document.getElementById('pin-bg').classList.remove('open');
+}
+function nextPin(el, nextId) {
+  if (el.value.length === 1) document.getElementById(nextId).focus();
+}
+function checkPin() {
+  const pin = ['p1','p2','p3','p4'].map(p => document.getElementById(p).value).join('');
+  if (pin.length < 4) return;
+  if (pin === ADMIN_PIN) {
+    deleteOp(pendingDeleteId);
+    closePinModal();
+  } else {
+    document.getElementById('pin-err').textContent = 'PIN incorrecto. Intentá de nuevo.';
+    ['p1','p2','p3','p4'].forEach(p => document.getElementById(p).value = '');
+    setTimeout(() => document.getElementById('p1').focus(), 50);
+  }
+}
+</script>
+</body>
+</html>
